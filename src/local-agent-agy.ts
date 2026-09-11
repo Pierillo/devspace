@@ -101,15 +101,19 @@ export function agyCommandArgs(
     args.push("--effort", effort);
   }
 
-  const writeMode = input.writeMode || context.writeMode;
+  const writeMode = input.writeMode || context.writeMode || "allowed";
   if (writeMode === "read_only") {
     args.push("--mode", "plan");
   } else if (writeMode === "full_access") {
     args.push("--dangerously-skip-permissions");
+  } else if (writeMode === "allowed") {
+    args.push("--mode", "accept-edits");
   }
 
   return args;
 }
+
+export const MAX_AGY_OUTPUT_BYTES = 10 * 1024 * 1024; // 10MB safety bound
 
 export interface AgyRuntimeOptions {
   command: string;
@@ -121,7 +125,7 @@ export interface AgyRuntimeOptions {
 export class AgyLocalAgentRuntime implements LocalAgentRuntime {
   readonly provider = "agy" as const;
   private alive = true;
-  private child?: ChildProcess;
+  private readonly activeChildren = new Set<ChildProcess>();
 
   constructor(private readonly options: AgyRuntimeOptions) {}
 
@@ -159,10 +163,11 @@ export class AgyLocalAgentRuntime implements LocalAgentRuntime {
             detached: process.platform !== "win32",
             windowsHide: true,
           });
-          this.child = child;
+          this.activeChildren.add(child);
 
           const timeoutMs = this.options.timeoutMs ?? DEFAULT_AGY_TIMEOUT_MS;
           const timer = setTimeout(() => {
+            this.activeChildren.delete(child);
             terminateProcessTree(child, "SIGTERM", process.platform !== "win32");
             setTimeout(() => {
               terminateProcessTree(child, "SIGKILL", process.platform !== "win32");
@@ -180,17 +185,21 @@ export class AgyLocalAgentRuntime implements LocalAgentRuntime {
 
           child.stdout.setEncoding("utf8");
           child.stdout.on("data", (chunk: string) => {
-            stdout += chunk;
+            if (stdout.length < MAX_AGY_OUTPUT_BYTES) {
+              stdout += chunk.slice(0, MAX_AGY_OUTPUT_BYTES - stdout.length);
+            }
           });
 
           child.stderr.setEncoding("utf8");
           child.stderr.on("data", (chunk: string) => {
-            stderr += chunk;
+            if (stderr.length < MAX_AGY_OUTPUT_BYTES) {
+              stderr += chunk.slice(0, MAX_AGY_OUTPUT_BYTES - stderr.length);
+            }
           });
 
           child.once("error", (error) => {
             clearTimeout(timer);
-            this.child = undefined;
+            this.activeChildren.delete(child);
             reject(new AgentProviderExecutionError({
               code: "PROVIDER_EXECUTION_ERROR",
               provider: "agy",
@@ -204,7 +213,7 @@ export class AgyLocalAgentRuntime implements LocalAgentRuntime {
 
           child.once("exit", (code, signal) => {
             clearTimeout(timer);
-            this.child = undefined;
+            this.activeChildren.delete(child);
             resolvePromise({ code, signal });
           });
         });
@@ -257,9 +266,12 @@ export class AgyLocalAgentRuntime implements LocalAgentRuntime {
 
   async close(): Promise<void> {
     this.alive = false;
-    if (this.child && this.child.exitCode === null) {
-      terminateProcessTree(this.child, "SIGTERM", process.platform !== "win32");
+    for (const child of this.activeChildren) {
+      if (child.exitCode === null) {
+        terminateProcessTree(child, "SIGTERM", process.platform !== "win32");
+      }
     }
+    this.activeChildren.clear();
   }
 
   isAlive(): boolean {

@@ -54,6 +54,21 @@ const context = {
   assert.ok(args.includes("--dangerously-skip-permissions"));
 }
 
+// 3. Test writeMode: "allowed" argument formatting
+{
+  const args = agyCommandArgs(
+    {
+      prompt: "edit a file",
+      workspaceRoot: "/tmp/project",
+      writeMode: "allowed",
+    },
+    context,
+  );
+  assert.ok(args.includes("--mode"));
+  assert.ok(args.includes("accept-edits"));
+  assert.ok(!args.includes("--dangerously-skip-permissions"));
+}
+
 // 3. Test execution and response parsing with a mock binary
 if (process.platform !== "win32") {
   const root = await mkdtemp(join(tmpdir(), "devspace-agy-test-"));
