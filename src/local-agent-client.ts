@@ -510,7 +510,11 @@ export function spawnLocalAgentDaemon(
   env: NodeJS.ProcessEnv = process.env,
 ): void {
   const entrypoint = resolveDaemonEntrypoint();
-  const child = spawn(process.execPath, [...daemonExecArgv(process.execArgv), entrypoint], {
+  const execArgv = [...daemonExecArgv(process.execArgv)];
+  if (entrypoint.endsWith(".ts") && !execArgv.includes("tsx/esm") && !execArgv.includes("tsx")) {
+    execArgv.push("--import", "tsx/esm");
+  }
+  const child = spawn(process.execPath, [...execArgv, entrypoint], {
     detached: true,
     stdio: "ignore",
     windowsHide: true,
@@ -544,6 +548,8 @@ export function daemonExecArgv(execArgv: readonly string[]): string[] {
 export function resolveDaemonEntrypoint(): string {
   const compiled = fileURLToPath(new URL("./local-agent-daemon-main.js", import.meta.url));
   if (existsSync(compiled)) return compiled;
+  const distCompiled = fileURLToPath(new URL("../dist/local-agent-daemon-main.js", import.meta.url));
+  if (existsSync(distCompiled)) return distCompiled;
   return fileURLToPath(new URL("./local-agent-daemon-main.ts", import.meta.url));
 }
 
