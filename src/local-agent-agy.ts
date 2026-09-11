@@ -36,15 +36,51 @@ export function resolveAgyCommand(env: NodeJS.ProcessEnv = process.env): string 
   return undefined;
 }
 
+export function resolveAgyModelAndEffort(
+  rawModel?: string,
+  rawEffort?: string,
+): { model?: string; effort?: string } {
+  if (!rawModel && !rawEffort) {
+    return {};
+  }
+
+  const effort = rawEffort?.toLowerCase();
+  const normalizedEffort = effort === "low" || effort === "medium" || effort === "high"
+    ? effort
+    : undefined;
+
+  const modelLower = rawModel?.toLowerCase();
+
+  if (modelLower === "flash" || modelLower === "gemini-flash") {
+    const selectedEffort = normalizedEffort ?? "high";
+    return { model: `gemini-3.8-flash-${selectedEffort}` };
+  }
+
+  if (modelLower === "pro" || modelLower === "gemini-pro") {
+    const selectedEffort = normalizedEffort === "low" ? "low" : "high";
+    return { model: `gemini-3.1-pro-${selectedEffort}` };
+  }
+
+  if (rawModel && /-(low|medium|high)$/i.test(rawModel)) {
+    return { model: rawModel };
+  }
+
+  if (!rawModel && normalizedEffort) {
+    return { model: `gemini-3.8-flash-${normalizedEffort}` };
+  }
+
+  return {
+    model: rawModel,
+    effort: rawEffort,
+  };
+}
+
 export function agyCommandArgs(
   input: LocalAgentRunInput,
   context: LocalAgentRuntimeContext,
   _env: NodeJS.ProcessEnv = process.env,
 ): string[] {
-  const args: string[] = [
-    "-p", input.prompt,
-    "--output-format", "json",
-  ];
+  const args: string[] = ["-p", input.prompt, "--output-format", "json"];
 
   if (input.providerSessionId) {
     args.push("--conversation", input.providerSessionId);
@@ -55,12 +91,12 @@ export function agyCommandArgs(
     args.push("--add-dir", resolve(workspaceRoot));
   }
 
-  const model = input.model || context.model;
+  const rawModel = input.model || context.model;
+  const rawEffort = input.effort || context.effort;
+  const { model, effort } = resolveAgyModelAndEffort(rawModel, rawEffort);
   if (model) {
     args.push("--model", model);
   }
-
-  const effort = input.effort || context.effort;
   if (effort) {
     args.push("--effort", effort);
   }

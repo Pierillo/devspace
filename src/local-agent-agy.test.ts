@@ -32,9 +32,8 @@ const context = {
   assert.ok(args.includes("--output-format"));
   assert.ok(args.includes("json"));
   assert.ok(args.includes("--model"));
-  assert.ok(args.includes("flash"));
-  assert.ok(args.includes("--effort"));
-  assert.ok(args.includes("high"));
+  assert.ok(args.includes("gemini-3.8-flash-high"));
+  assert.ok(!args.includes("--effort"));
   assert.ok(args.includes("--mode"));
   assert.ok(args.includes("plan"));
 }
