@@ -27,6 +27,7 @@ import {
   extractPiProviderError,
   type PiSessionFactory,
 } from "./local-agent-pi.js";
+import { AgyLocalAgentDriver } from "./local-agent-agy.js";
 import type { LocalAgentDriver } from "./local-agent-runtime.js";
 
 export type LocalAgentAdapter = LocalAgentDriver;
@@ -57,6 +58,7 @@ export function createLocalAgentDrivers(
     new AcpLocalAgentDriver("cursor", providerEnv("cursor")),
     new AcpLocalAgentDriver("copilot", providerEnv("copilot")),
     new AcpLocalAgentDriver("grok", providerEnv("grok")),
+    new AgyLocalAgentDriver(providerEnv("agy")),
   ];
 }
 

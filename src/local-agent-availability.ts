@@ -47,6 +47,8 @@ function checkLocalAgentProviderAvailability(
       return commandAvailability(provider, providerEnv.COPILOT_COMMAND ?? "copilot", providerEnv);
     case "grok":
       return commandAvailability(provider, providerEnv.GROK_COMMAND ?? "grok", providerEnv);
+    case "agy":
+      return commandAvailability(provider, providerEnv.AGY_COMMAND ?? "agy", providerEnv);
   }
 }
 

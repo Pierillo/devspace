@@ -24,7 +24,7 @@ const commandSchema = z.string()
 
 const providerSchema = z.discriminatedUnion("id", [
   z.object({
-    id: z.enum(["codex", "claude", "cursor", "copilot", "grok"]),
+    id: z.enum(["codex", "claude", "cursor", "copilot", "grok", "agy"]),
     ...providerShape,
     command: commandSchema,
   }).strict(),
@@ -102,6 +102,7 @@ export function providerCommandVariable(provider: LocalAgentProvider): string | 
     case "cursor": return "CURSOR_COMMAND";
     case "copilot": return "COPILOT_COMMAND";
     case "grok": return "GROK_COMMAND";
+    case "agy": return "AGY_COMMAND";
     case "opencode":
     case "pi":
       return undefined;

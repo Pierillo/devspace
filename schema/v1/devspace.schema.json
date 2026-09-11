@@ -188,7 +188,8 @@
                       "claude",
                       "cursor",
                       "copilot",
-                      "grok"
+                      "grok",
+                      "agy"
                     ]
                   },
                   "enabled": {
